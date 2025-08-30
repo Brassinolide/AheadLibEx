@@ -16,7 +16,7 @@
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
-class CAboutDlg : public CDialogEx
+class CAboutDlg : public CDialog
 {
 public:
     CAboutDlg();
@@ -34,16 +34,16 @@ protected:
     DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
+CAboutDlg::CAboutDlg() : CDialog(IDD_ABOUTBOX)
 {
 }
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CDialogEx::DoDataExchange(pDX);
+    CDialog::DoDataExchange(pDX);
 }
 
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 END_MESSAGE_MAP()
 
 
@@ -52,7 +52,7 @@ END_MESSAGE_MAP()
 
 
 CAheadLibExDlg::CAheadLibExDlg(CWnd* pParent /*=nullptr*/)
-    : CDialogEx(IDD_AHEADLIBEX_DIALOG, pParent)
+    : CDialog(IDD_AHEADLIBEX_DIALOG, pParent)
     , m_bIsx64(false)
     , m_hDll(nullptr)
     , m_bIsWow64(false)
@@ -63,14 +63,14 @@ CAheadLibExDlg::CAheadLibExDlg(CWnd* pParent /*=nullptr*/)
 
 void CAheadLibExDlg::DoDataExchange(CDataExchange* pDX)
 {
-    CDialogEx::DoDataExchange(pDX);
+    CDialog::DoDataExchange(pDX);
     DDX_Control(pDX, IDC_EDIT_INPUTFILE, m_editInputFile);
     DDX_Control(pDX, IDC_EDIT_OUTPUTFILE, m_editOutputFile);
     DDX_Control(pDX, IDC_EDIT_OUTPUTINFO, m_editInfo);
     DDX_Control(pDX, IDC_EDIT_OUTPUTPROJECT, m_editOutputProject);
 }
 
-BEGIN_MESSAGE_MAP(CAheadLibExDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CAheadLibExDlg, CDialog)
     ON_WM_SYSCOMMAND()
     ON_WM_PAINT()
     ON_WM_QUERYDRAGICON()
@@ -124,7 +124,7 @@ BOOL IsArch64()
 
 BOOL CAheadLibExDlg::OnInitDialog()
 {
-    CDialogEx::OnInitDialog();
+    CDialog::OnInitDialog();
 
     // 将“关于...”菜单项添加到系统菜单中。
 
@@ -189,7 +189,7 @@ void CAheadLibExDlg::OnSysCommand(UINT nID, LPARAM lParam)
     }
     else
     {
-        CDialogEx::OnSysCommand(nID, lParam);
+        CDialog::OnSysCommand(nID, lParam);
     }
 }
 
@@ -218,7 +218,7 @@ void CAheadLibExDlg::OnPaint()
     }
     else
     {
-        CDialogEx::OnPaint();
+        CDialog::OnPaint();
     }
 }
 
@@ -283,12 +283,19 @@ void CAheadLibExDlg::OnDropFiles(HDROP hDropInfo)
 
     OnLoadFile();
 
-    CDialogEx::OnDropFiles(hDropInfo);
+    CDialog::OnDropFiles(hDropInfo);
 }
 
 
 void CAheadLibExDlg::OnLoadFile()
 {
+    if (m_hDll != NULL)
+    {
+        FreeLibrary(m_hDll);
+        m_hDll = NULL;
+    }
+
+
     if (m_bIsWow64)
     {
         PVOID OldValue = NULL;
@@ -1175,7 +1182,7 @@ void CAheadLibExDlg::OnCreateVcxproj(CString& strVcxproj)
     <ProjectGuid>%s</ProjectGuid>\r\n\
     <RootNamespace>%s</RootNamespace>\r\n\
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>\r\n\
-  </PropertyGroup>"),m_strGuidVcxproj.GetString(),m_strFileNameNOExtension.GetString());
+  </PropertyGroup>"), m_strGuidVcxproj.GetString(), m_strFileNameNOExtension.GetString());
     strVcxproj += g_szVcxProjectEnd;
 }
 void CAheadLibExDlg::OnCreateFilters(CString& strFilters)
@@ -1375,7 +1382,9 @@ void CAheadLibExDlg::OnBnClickedRadioProject()
 void CAheadLibExDlg::OnBnClickedOk()
 {
     // TODO: 在此添加控件通知处理程序代码
-    //CDialogEx::OnOK();
+    //CDialog::OnOK();
+
+
 
     /*
     * 不管三七二十一，初始化路径字符串
@@ -1395,6 +1404,17 @@ void CAheadLibExDlg::OnBnClickedOk()
     m_strAsmName = m_strFileNameNOExtension;
     m_strAsmName += "_jump.asm";
 
+
+    /*
+    * 判断参数是否合法
+    */
+    if (m_strFilePath.GetLength() <= 0)
+    {
+        AfxMessageBox(_T("No input file!"), MB_ICONINFORMATION);
+        return;
+    }
+
+
     /*
     * 生成文件
     */
@@ -1412,6 +1432,12 @@ void CAheadLibExDlg::OnBnClickedOk()
         CStringA ansiSource;
 
         m_editOutputFile.GetWindowText(outputPath);
+
+        if (outputPath.GetLength() <= 0)
+        {
+            AfxMessageBox(_T("Output file path error!"), MB_ICONINFORMATION);
+            return;
+        }
 
         if (fileOut.Open(outputPath, CFile::modeCreate | CFile::modeWrite))
         {
@@ -1481,6 +1507,13 @@ void CAheadLibExDlg::OnBnClickedOk()
         StrAsmPath = m_strProjectPath;
         StrAsmPath += m_strFileNameNOExtension;
         StrAsmPath += _T("_jump.asm");
+
+        //检查路径是否为空
+        if (m_strProjectPath.GetLength() <= 0)
+        {
+            AfxMessageBox(_T("Project path error!"), MB_ICONINFORMATION);
+            return;
+        }
 
         CreateDirectory(m_strProjectPath, NULL); //直接创建项目根目录，Cfile.Open只能打开已存在的目录，防止手动编辑框修改目录导致的错误。
 
